@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>New Project</h1>
+  <form action="" method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        {{ form.name.label(class="form-control-label") }}
+        {{ form.name(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.api_key.label(class="form-control-label") }}
+        {{ form.api_key(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.spending_limit.label(class="form-control-label") }}
+        {{ form.spending_limit(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.users.label(class="form-control-label") }}
+        {{ form.users(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.project_leads.label(class="form-control-label") }}
+        {{ form.project_leads(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.allowed_models.label(class="form-control-label") }}
+        {{ form.allowed_models(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+  </form>
+{% endblock %}

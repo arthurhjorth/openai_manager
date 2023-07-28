@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Projects</h2>
+            {% if api_keys|length > 0 %}
+                <a href="/new/project" class="btn btn-primary mb-3">New Project</a>
+            {% else %}
+                <a href="#" class="btn btn-danger mb-3" disabled>You must make an API key before you can make a project</a>
+            {% endif %}
+            {% for project in projects %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 border rounded">
+                        <h5 class="card-title m-0">{{ project.name }}</h5>
+                        <div>
+                            {% if current_user.is_admin or (current_user.is_project_admin and project.id in current_user.project_leads) %}
+                                <a href="/project/{{ project.id }}" class="btn btn-primary mr-2 equal-width">Edit project details</a>
+                            {% else %}
+                                <a href="/project/{{ project.id }}" class="btn btn-secondary mr-2 equal-width">View project details</a>
+                            {% endif %}
+                            <a href="/project/{{ project.id }}/activity" class="btn btn-info equal-width">View Project Activity</a>
+                        </div>
+                    </div>
+                    {% if project.api_key %}
+                        <p>API Key: {{ project.api_key.name }}</p>
+                    {% else %}
+                        <p class="text-danger">No API key associated with project. All API calls will fail.</p>
+                    {% endif %}
+                    {% for user in project.users.all() %}
+                        <p>User: {{ user.username }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="col-md-6">
+            <h2>API Keys</h2>
+            <a href="/new/api_key" class="btn btn-primary mb-3">Add new API Key</a>
+            {% for key in api_keys %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">{{ key.name }}</h5>
+                    <a href="/api_key/{{ key.id }}" class="btn btn-primary">View</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<style>
+.equal-width {
+    width: 150px;  /* Adjust width as necessary */
+}
+</style>
+{% endblock %}

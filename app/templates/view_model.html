@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card">
+    <h2>Model name: {{ model.name }}</h2>
+    <p>Description: {{ model.description }}</p>
+    <hr>
+
+    <div class="card">
+    <h4>Current Cost</h4>
+    <p>In Tokens Cost: {{ current_cost.in_tokens_cost }}</p>
+    <p>Out Tokens Cost: {{ current_cost.out_tokens_cost }}</p>
+    <p>Effective from: {{ current_cost.start_date.date() }}</p>
+    {% if current_cost.end_date %}
+    <p>Effective until: {{ current_cost.end_date.date() }}</p>
+    {% endif %}
+    </div>
+</div>
+    <hr>
+
+    <h4>Change Price</h4>
+    <form method="POST" action="{{ url_for('change_price', model_id=model.id) }}">
+        <div class="form-group">
+            <label for="in_tokens_cost">In Tokens Cost</label>
+            <input type="number" step="0.0000000001" id="in_tokens_cost" name="in_tokens_cost" min="0" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="out_tokens_cost">Out Tokens Cost</label>
+            <input type="number" step="0.0000000001" id="out_tokens_cost" name="out_tokens_cost" min="0" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="start_date">Start Date</label>
+            <input type="date" id="start_date" name="start_date" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+    <hr>
+
+    <h4>Previous Costs</h4>
+    <ul>
+        {% for cost in outdated_costs %}
+        <li>
+            <p>In Tokens Cost: {{ cost.in_tokens_cost }}</p>
+            <p>Out Tokens Cost: {{ cost.out_tokens_cost }}</p>
+            <p>Effective from: {{ cost.start_date.date() }}</p>
+            <p>Effective until: {{ cost.end_date.date() }}</p>
+        </li>
+        {% endfor %}
+    </ul>
+    <hr>
+    
+<h4>Future Costs</h4>
+<ul>
+    {% for cost in future_costs %}
+    <li>
+        <p>In Tokens Cost: {{ cost.in_tokens_cost }}</p>
+        <p>Out Tokens Cost: {{ cost.out_tokens_cost }}</p>
+        <p>Effective from: {{ cost.start_date.date() }}</p>
+        {% if cost.end_date %}
+        <p>Effective until: {{ cost.end_date.date() }}</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('delete_cost', cost_id=cost.id) }}">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Project Activity</h1>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.start_date.label }} {{ form.start_date(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.end_date.label }} {{ form.end_date(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.users.label }} {{ form.users(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+
+    <div class="accordion" id="activityAccordion">
+        {% for day, day_data in responses.items() %}
+            <div class="accordion-item">
+                <div class="accordion-header" id="heading{{ loop.index }}">
+                    <button class="accordion-button collapsed btn btn-primary btn-block" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+                        {{ day }} (Tokens In: {{ day_data.total.tokens_in }}, Tokens Out: {{ day_data.total.tokens_out }}, In Cost: {{ day_data.total.cost.in_cost }}, Out Cost: {{ day_data.total.cost.out_cost }})
+                    </button>
+                </div>
+                <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#activityAccordion">
+                    <div class="accordion-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Username</th>
+                                        <th scope="col">Model Name</th>
+                                        <th scope="col">Tokens In</th>
+                                        <th scope="col">Tokens Out</th>
+                                        <th scope="col">In Cost</th>
+                                        <th scope="col">Out Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for username, user_data in day_data.users.items() %}
+                                        {% for model_name, stats in user_data.items() %}
+                                            <tr>
+                                                <td>{{ username }}</td>
+                                                <td>{{ model_name }}</td>
+                                                <td>{{ stats.tokens_in }}</td>
+                                                <td>{{ stats.tokens_out }}</td>
+                                                <td>{{ stats.cost.in_cost }}</td>
+                                                <td>{{ stats.cost.out_cost }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#expand-all').click(function(){
+                $('.collapse').collapse('show');
+            });
+        
+            $('#collapse-all').click(function(){
+                $('.collapse').collapse('hide');
+            });
+        
+            $('.accordion-button').click(function() {
+                var target = $(this).attr('data-bs-target');
+                $(target).collapse('toggle');
+            });
+        });
+        </script>
+        
+{% endblock %}

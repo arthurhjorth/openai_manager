@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Create a New OpenAI Model and Model Cost</h1>
+  <form method="POST">
+    {{ model_form.hidden_tag() }}
+    {{ cost_form.hidden_tag() }}
+    <div class="form-group">
+      {{ model_form.name.label }} {{ model_form.name(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ cost_form.in_tokens_cost.label }} {{ cost_form.in_tokens_cost(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ cost_form.out_tokens_cost.label }} {{ cost_form.out_tokens_cost(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ cost_form.start_date.label }} {{ cost_form.start_date(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ cost_form.end_date.label }} {{ cost_form.end_date(class="form-control") }}
+    </div>
+    {{ model_form.submit(class="btn btn-primary") }}
+  </form>
+</div>
+{% endblock %}
