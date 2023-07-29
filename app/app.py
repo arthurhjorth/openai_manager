@@ -1,6 +1,6 @@
 from collections import defaultdict
 import uuid, requests, random, json
-from flask import Flask, request, redirect, url_for, jsonify, app, render_template, flash
+from flask import Flask, request, redirect, url_for, jsonify, app, render_template, flash, Response
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from flask_login import LoginManager, current_user, AnonymousUserMixin, login_user, logout_user, login_required
@@ -308,10 +308,10 @@ def require_api_key(view_function):
         if ik.total_spent > ik.spending_limit * .98 and ik.spending_limit != 0:
             raise Forbidden("Your API key is out of money")
         api_key = APIKey.query.filter(APIKey.id == proj.api_key_id).first().key_string
-        request.headers.update({
+        request.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}"
-        })
+        }
         return view_function(*args, **kwargs)
     return decorator
 
@@ -320,30 +320,32 @@ def require_api_key(view_function):
 @require_api_key
 def chat_completions():
     url = '/v1/chat/completions'
-    return requests.post(url, headers=request.headers, data=json.dumps(request.data))
+    return requests.post(url, headers=request.headers, data=request.data)
 
 @app.route('/v1/embeddings', methods=['POST'])
 @require_api_key
 def embeddings():
     url = '/v1/embeddings'
-    return requests.post(url, headers=request.headers, data=json.dumps(request.data))
+    return requests.post(url, headers=request.headers, data=request.data)
 
 @app.route('/v1/completions', methods=['POST'])
 @require_api_key
 def completions():
-    url = '/v1/completions'
-    return requests.post(url, headers=request.headers, data=json.dumps(request.data))
+    url = f"https://api.openai.com/{request.url_rule.endpoint}"
+    resp = requests.post(url, headers=request.headers, data=request.data)
+    flask_resp = Response(response=resp.content, status=resp.status_code, headers=dict(resp.headers))
+    return flask_resp
 
 @app.route('/v1/audio/transcriptions', methods=['POST'])
 @require_api_key
 def audio_transcriptions():
     url = '/v1/audio/transcriptions'
-    return requests.post(url, headers=request.headers, data=json.dumps(request.data))
+    return jsonify(200, requests.post(url, headers=request.headers, data=request.data))
 
 @app.route('/v1/audio/translations', methods=['POST'])
 def audio_translations():
     url = '/v1/audio/translations'
-    return requests.post(url, headers=request.headers, data=json.dumps(request.data))
+    return requests.post(url, headers=request.headers, data=request.data)
 
 
 def generate_random_time():

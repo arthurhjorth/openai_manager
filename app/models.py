@@ -59,8 +59,8 @@ class Project(db.Model):
     name = db.Column(db.String(64), index=True, unique=True)
     time_created = db.Column(db.DateTime, default=datetime.utcnow)
     api_key_id = db.Column(db.Integer, db.ForeignKey('api_key.id')) 
-    spending_limit = db.Column(db.Float)
-    total_spent = db.Column(db.Float)
+    spending_limit = db.Column(db.Float, default = 0)
+    total_spent = db.Column(db.Float, default = 0)
     allowed_models = db.relationship('OpenAIModel', secondary=projects_models, backref=db.backref('projects', lazy='dynamic'))
     internal_api_keys = db.relationship('InternalAPIKey', backref='project', lazy='dynamic')
     
@@ -113,12 +113,6 @@ class ModelCost(db.Model):
     start_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     end_date = db.Column(db.DateTime, nullable=True)
 
-class APICall(db.Model):
-    __tablename__ = 'api_call'
-    id = db.Column(db.Integer, primary_key=True)
-    internal_api_key_id = db.Column(db.Integer, db.ForeignKey('internal_api_key.id')) 
-    request = db.Column(JSON)
-    time_created = db.Column(db.DateTime, default=datetime.utcnow)
 
 class APIResponse(db.Model):
     __tablename__ = 'api_response'
@@ -127,6 +121,7 @@ class APIResponse(db.Model):
     tokens_in = db.Column(db.Integer)
     tokens_out = db.Column(db.Integer)
     internal_api_key_id = db.Column(db.Integer, db.ForeignKey('internal_api_key.id')) 
+    request = db.Column(JSON)
     response = db.Column(JSON)
     time_created = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -163,11 +158,10 @@ class InternalAPIKey(db.Model):
     start_date = db.Column(db.DateTime, default=datetime.utcnow)
     end_date = db.Column(db.DateTime, nullable=True)
     spending_limit = db.Column(db.Float, default=0.0)
-    total_spent = db.Column(db.Float)
+    total_spent = db.Column(db.Float, default=0)
     spending_last_checked = db.Column(db.DateTime)
     time_created = db.Column(db.DateTime, default=datetime.utcnow)
     api_responses = db.relationship('APIResponse', backref='internal_api_key', lazy='dynamic')
-    api_calls = db.relationship('APICall', backref='internal_api_key', lazy='dynamic')
 
     @classmethod
     def get_by_string(cls, astr):

@@ -29,8 +29,9 @@
                     {% else %}
                         <p class="text-danger">No API key associated with project. All API calls will fail.</p>
                     {% endif %}
-                    {% for user in project.users.all() %}
-                        <p>User: {{ user.username }}</p>
+                    {% for internal_api_key in project.internal_api_keys.all() %}
+                        <p>User: {{ internal_api_key.user.username }}</p>
+                        <p>Key: {{ internal_api_key.internal_api_key_string }}</p>
                     {% endfor %}
                 </div>
             </div>
