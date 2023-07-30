@@ -5,7 +5,7 @@ from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from flask_login import LoginManager, current_user, AnonymousUserMixin, login_user, logout_user, login_required
 from flask_migrate import Migrate
-from models import db, User, Project, APIKey, APICall, APIResponse, OpenAIModel, ModelCost, InternalAPIKey
+from models import db, User, Project, APIKey, APIResponse, OpenAIModel, ModelCost, InternalAPIKey
 from werkzeug.exceptions import Unauthorized, Forbidden
 from werkzeug.urls import url_parse
 from forms import LoginForm, ModelCostForm, OpenAIModelForm, ProjectForm, APIKeyForm, APIResponseFilterForm
@@ -45,7 +45,6 @@ with app.app_context():
     admin.add_view(AdminModelView(User, db.session))
     admin.add_view(ProjectAdminModelView(APIKey, db.session, name="Open API Keys"))
     admin.add_view(ProjectAdminModelView(Project, db.session,))
-    admin.add_view(ProjectAdminModelView(APICall, db.session, name="API Calls"))
     admin.add_view(ProjectAdminModelView(APIResponse, db.session, name="API Responses"))
     admin.add_view(ProjectAdminModelView(OpenAIModel, db.session, name="OpenAI Model"))
     admin.add_view(ProjectAdminModelView(ModelCost, db.session, name="Model cost"))
