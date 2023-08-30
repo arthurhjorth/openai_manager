@@ -1,0 +1,20 @@
+
+{'model_name': 'gpt-4', 'description': 'chat', 'input_cost': 0.03, 'output_cost': 0.06}
+{'model_name': 'gpt-4-0613', 'description': 'chat', 'input_cost': 0.03, 'output_cost': 0.06}
+{'model_name': 'gpt-4-32k', 'description': 'chat', 'input_cost': 0.06, 'output_cost': 0.12}
+{'model_name': 'gpt-4-32k-0613', 'description': 'chat', 'input_cost': 0.06, 'output_cost': 0.12}
+{'model_name': 'gpt-3.5-turbo', 'description': 'chat', 'input_cost': 0.0015, 'output_cost': 0.002}
+{'model_name': 'gpt-3.5-turbo-0613', 'description': 'chat', 'input_cost': 0.0015, 'output_cost': 0.002}
+{'model_name': 'gpt-3.5-turbo-16k', 'description': 'chat', 'input_cost': 0.003}
+{'model_name': 'gpt-3.5-turbo-16k-0613', 'description': 'chat', 'input_cost': 0.003}
+{'model_name': 'text-davinci-003', 'description': 'text completion', 'input_cost': 0.03, 'output_cost': 0.12}
+{'model_name': 'text-davinci-002', 'description': 'text completion', 'input_cost': 0.03, 'output_cost': 0.12}
+{'model_name': 'text-davinci-001', 'description': 'text completion', 'input_cost': 0.03, 'output_cost': 0.12}
+{'model_name': 'text-curie-001', 'description': 'text completion', 'input_cost': 0.003, 'output_cost': 0.012}
+{'model_name': 'text-babbage-001', 'description': 'text completion', 'input_cost': 0.0006, 'output_cost': 0.0024}
+{'model_name': 'text-ada-001', 'description': 'text completion', 'input_cost': 0.0004, 'output_cost': 0.0016}
+{'model_name': 'davinci', 'description': 'fine-tuning', 'input_cost': 0.03, 'output_cost': 0.12}
+{'model_name': 'curie', 'description': 'fine-tuning', 'input_cost': 0.003, 'output_cost': 0.012}
+{'model_name': 'babbage', 'description': 'fine-tuning', 'input_cost': 0.0006, 'output_cost': 0.0024}
+{'model_name': 'ada', 'description': 'fine-tuning', 'input_cost': 0.0004, 'output_cost': 0.0016}
+{'model_name': 'text-embedding-ada-002', 'description': 'embeddings', 'input_cost': 0.0001, 'output_cost' 0.0001}

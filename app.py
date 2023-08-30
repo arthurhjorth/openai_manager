@@ -1,6 +1,6 @@
 from collections import defaultdict
 import uuid, requests, random, json
-from flask import Flask, request, redirect, url_for, jsonify, app, render_template, flash, Response
+from flask import Flask, request, redirect, url_for, jsonify, app, render_template, flash, Response, make_response, g
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from flask_login import LoginManager, current_user, AnonymousUserMixin, login_user, logout_user, login_required
@@ -8,12 +8,16 @@ from flask_migrate import Migrate
 from models import db, User, Project, APIKey, APIResponse, OpenAIModel, ModelCost, InternalAPIKey
 from werkzeug.exceptions import Unauthorized, Forbidden
 from werkzeug.urls import url_parse
-from forms import LoginForm, ModelCostForm, OpenAIModelForm, ProjectForm, APIKeyForm, APIResponseFilterForm
+from forms import LoginForm, ModelCostForm, OpenAIModelForm, ProjectForm, APIKeyForm, APIResponseFilterForm, RegistrationForm
 from datetime import datetime, timedelta
 from functools import wraps
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db' # Use SQLite for simplicity
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db' # Use SQLite for simplicity
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://myuser:mypassword@db/mydatabase'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+TEMPLATES_AUTO_RELOAD = True
 app.config['SECRET_KEY'] = '2e3368c5ee5bd49c9635924c55bd22277bddebcd379c662b'
 
 db.init_app(app)
@@ -70,10 +74,11 @@ def login():
 @login_required
 def home():
     projects = get_users_projects()
-    for p in projects:
-        print(p, p.users.all())
     api_keys = APIKey.query.filter(APIKey.user_id == current_user.id).all()
-    return render_template('home.html', projects=projects, api_keys=api_keys)
+    models = OpenAIModel.query.all()
+    users = User.query.all()
+    print(users)
+    return render_template('home.html', projects=projects, api_keys=api_keys, models=models, users=users)
 
 def get_users_projects():
     if current_user.is_admin:
@@ -85,6 +90,18 @@ def get_users_projects():
 def logout():
     logout_user()
     return redirect(url_for('home'))
+
+@app.route('/new/user', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data, email=form.email.data)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash(f"Created new user: {user.username}")
+        return redirect(url_for('home'))  # replace 'login' with your login view function
+    return render_template('new_user.html', title='New User', form=form)
 
 @app.route('/new/project', methods=['GET', 'POST'])
 def new_project():
@@ -131,7 +148,7 @@ def new_model():
                          end_date=cost_form.end_date.data)
         db.session.add(cost)
         db.session.commit()
-        return redirect(url_for('index'))
+        return redirect(url_for('home'))
     return render_template('new_model.html', model_form=model_form, cost_form=cost_form)
 
 @app.route('/new/api_key', methods=['GET', 'POST'])
@@ -178,7 +195,6 @@ def api_responses(project_id):
     total_costs = {'tokens_in': 0, 'tokens_out': 0}  # to store total costs
     model_costs = defaultdict(lambda: {'tokens_in': 0, 'tokens_out': 0})  # to store costs per model
     if request.method == 'POST':
-        print(form.data)
         start_date = form.start_date.data
         end_date = form.end_date.data
         users = [int(n) for n in form.users.data]
@@ -284,7 +300,25 @@ def handle_unauthorized(e):
 def handle_forbidden(e):
     return jsonify({'error': str(e)}), 403
 
+## function for creating APIResponse objects for db 
+def save_api_call_and_response(the_request, the_response):
+    req_json = the_request.get_json()
+    resp_json = the_response.json()
+    model_name = resp_json['model']
+    tokens_in = resp_json['usage']['prompt_tokens'] 
+    tokens_out = resp_json['usage']['completion_tokens'] if 'completion_tokens' in resp_json['usage'] else 0 # embeddings do not have tokens_out
+    internal_api_key_id = g.internal_api_key_id
+    api_response = APIResponse(model_name=model_name, 
+                               tokens_in=tokens_in, 
+                               tokens_out=tokens_out, 
+                               internal_api_key_id=internal_api_key_id, 
+                               request=req_json,
+                               response=resp_json)
+    api_response.update_cost()
+    db.session.add(api_response)
+    db.session.commit()
 
+### route wrapper for checking if API key is current, can use the model, and has money
 def require_api_key(view_function):
     @wraps(view_function)
     def decorator(*args, **kwargs):
@@ -299,6 +333,7 @@ def require_api_key(view_function):
         except ValueError:
             raise Unauthorized('Invalid Authorization header')
         ik = InternalAPIKey.get_by_string(token)
+        g.internal_api_key_id = ik.id
         if not ik.is_current():
             raise Forbidden("Your API key is not current")
         proj = ik.project
@@ -306,6 +341,9 @@ def require_api_key(view_function):
             raise Forbidden("Your project is out of money")
         if ik.total_spent > ik.spending_limit * .98 and ik.spending_limit != 0:
             raise Forbidden("Your API key is out of money")
+        if (model_name := request.get_json()['model']) not in ik.project.model_names():
+            raise Forbidden(f"Your API key does not have access to the model {model_name}")
+        # if you have lived a good life and made it this far, we send the request to OpenAI with the real APIKey
         api_key = APIKey.query.filter(APIKey.id == proj.api_key_id).first().key_string
         request.headers = {
             "Content-Type": "application/json",
@@ -314,37 +352,24 @@ def require_api_key(view_function):
         return view_function(*args, **kwargs)
     return decorator
 
+# don't think I'm using this.. just had to special case out tokens in save_api_call
+# @require_api_key
+# def completions():
+#     url = f"https://api.openai.com/{request.url_rule.endpoint}"
+#     resp = requests.post(url, headers=request.headers, data=request.data)
+#     save_api_call_and_response(request, resp)
+#     return resp.json(), 200
 
-@app.route('/v1/chat/completions', methods=['POST'])
+# one endpoint to rule them all
+@app.route('/v1/chat/completions', methods=['POST'], endpoint='v1/chat/completions')
+@app.route('/v1/completions', methods=['POST'], endpoint='v1/completions')
+@app.route('/v1/embeddings', methods=['POST'], endpoint='v1/embeddings')
 @require_api_key
-def chat_completions():
-    url = '/v1/chat/completions'
-    return requests.post(url, headers=request.headers, data=request.data)
-
-@app.route('/v1/embeddings', methods=['POST'])
-@require_api_key
-def embeddings():
-    url = '/v1/embeddings'
-    return requests.post(url, headers=request.headers, data=request.data)
-
-@app.route('/v1/completions', methods=['POST'])
-@require_api_key
-def completions():
+def open_ai_call():
     url = f"https://api.openai.com/{request.url_rule.endpoint}"
     resp = requests.post(url, headers=request.headers, data=request.data)
-    flask_resp = Response(response=resp.content, status=resp.status_code, headers=dict(resp.headers))
-    return flask_resp
-
-@app.route('/v1/audio/transcriptions', methods=['POST'])
-@require_api_key
-def audio_transcriptions():
-    url = '/v1/audio/transcriptions'
-    return jsonify(200, requests.post(url, headers=request.headers, data=request.data))
-
-@app.route('/v1/audio/translations', methods=['POST'])
-def audio_translations():
-    url = '/v1/audio/translations'
-    return requests.post(url, headers=request.headers, data=request.data)
+    save_api_call_and_response(request, resp)
+    return resp.json(), 200
 
 
 def generate_random_time():
@@ -357,7 +382,7 @@ def generate_random_time():
 
 @app.route('/add_test_data')
 def add_test_data():
-    for n in ["Kenneth", "Kristoffer", "Ida", "Lisa"]:
+    for n in ["Kenneth", "Kristoffer", "Ida Marie"]:
         u = User(username=n)
         db.session.add(u)
         db.session.commit()
@@ -374,7 +399,6 @@ def add_test_data():
     db.session.commit()
     for ik in p.internal_api_keys:
         for n in range(400):
-            print(ik.user.username)
             model_name = random.sample(p.model_names(), 1)[0]
             in_tokens = random.randint(5, 400)
             out_tokens = random.randint(5, 400)

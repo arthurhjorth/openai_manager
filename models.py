@@ -1,7 +1,7 @@
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-# from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import JSON, and_, or_, desc
 
 db = SQLAlchemy()
@@ -39,6 +39,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), index=True, unique=True)
     password_hash = db.Column(db.String(128))
     time_created = db.Column(db.DateTime, default=datetime.utcnow)
+    email = db.Column(db.String(128))
     is_admin = db.Column(db.Boolean, default=False)
     is_project_admin = db.Column(db.Boolean, default=False)
     api_keys = db.relationship('APIKey', backref='user')
@@ -121,9 +122,20 @@ class APIResponse(db.Model):
     tokens_in = db.Column(db.Integer)
     tokens_out = db.Column(db.Integer)
     internal_api_key_id = db.Column(db.Integer, db.ForeignKey('internal_api_key.id')) 
-    request = db.Column(JSON)
-    response = db.Column(JSON)
+    request = db.Column(JSONB)
+    response = db.Column(JSONB)
     time_created = db.Column(db.DateTime, default=datetime.utcnow)
+    in_cost = db.Column(db.Float)
+    out_cost = db.Column(db.Float)
+
+    def update_cost(self):
+        # Get the relevant OpenAIModel
+        open_ai_model = OpenAIModel.query.filter_by(name=self.model_name).first()
+        current_cost = open_ai_model.get_current_cost()
+        # Compute the costs
+        self.in_cost = self.tokens_in * current_cost.in_tokens_cost / 1000 # price is in per 1k tokens
+        self.out_cost = self.tokens_out * current_cost.out_tokens_cost / 1000
+
 
     def get_costs(self):
         # Get the relevant OpenAIModel
