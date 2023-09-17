@@ -109,8 +109,8 @@ class ModelCost(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # Foreign key for one to many relationship
     model_id = db.Column(db.Integer, db.ForeignKey('open_ai_model.id'))
-    in_tokens_cost = db.Column(db.Integer, nullable=False)
-    out_tokens_cost = db.Column(db.Integer, nullable=False)
+    in_tokens_cost = db.Column(db.Float, nullable=False)
+    out_tokens_cost = db.Column(db.Float, nullable=False)
     start_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     end_date = db.Column(db.DateTime, nullable=True)
 
@@ -122,8 +122,8 @@ class APIResponse(db.Model):
     tokens_in = db.Column(db.Integer)
     tokens_out = db.Column(db.Integer)
     internal_api_key_id = db.Column(db.Integer, db.ForeignKey('internal_api_key.id')) 
-    request = db.Column(JSONB)
-    response = db.Column(JSONB)
+    request = db.Column(JSON)
+    response = db.Column(JSON)
     time_created = db.Column(db.DateTime, default=datetime.utcnow)
     in_cost = db.Column(db.Float)
     out_cost = db.Column(db.Float)
@@ -137,6 +137,7 @@ class APIResponse(db.Model):
         self.out_cost = self.tokens_out * current_cost.out_tokens_cost / 1000
 
 
+    #@todo: this is not used anymore, but it might be called in different places. Clean it up before deleting the method
     def get_costs(self):
         # Get the relevant OpenAIModel
         open_ai_model = OpenAIModel.query.filter_by(name=self.model_name).first()
@@ -173,10 +174,12 @@ class InternalAPIKey(db.Model):
     total_spent = db.Column(db.Float, default=0)
     spending_last_checked = db.Column(db.DateTime)
     time_created = db.Column(db.DateTime, default=datetime.utcnow)
+    active = db.Column(db.Boolean, default=True)
     api_responses = db.relationship('APIResponse', backref='internal_api_key', lazy='dynamic')
 
     @classmethod
     def get_by_string(cls, astr):
+        print(cls, astr)
         return db.session.query(cls).filter(cls.internal_api_key_string==astr).first()
 
     def is_current(self):

@@ -80,6 +80,14 @@ def home():
     print(users)
     return render_template('home.html', projects=projects, api_keys=api_keys, models=models, users=users)
 
+
+@app.route('/test')
+def test():
+    r = []
+    for rule in app.url_map.iter_rules():
+        r.append(rule.endpoint)
+    return jsonify(r)
+
 def get_users_projects():
     if current_user.is_admin:
         return Project.query.all()
@@ -285,10 +293,10 @@ def delete_cost(cost_id):
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
-
+@app.route('/api_key/<int:api_key_id>')
+def api_key(api_key_id):
+    iak = db.session.get(InternalAPIKey, api_key_id)
+    return jsonify(iak.project.model_names())
 
 ##### This is to handle the logic of the actual end points
 
@@ -304,9 +312,9 @@ def handle_forbidden(e):
 def save_api_call_and_response(the_request, the_response):
     req_json = the_request.get_json()
     resp_json = the_response.json()
-    model_name = resp_json['model']
-    tokens_in = resp_json['usage']['prompt_tokens'] 
-    tokens_out = resp_json['usage']['completion_tokens'] if 'completion_tokens' in resp_json['usage'] else 0 # embeddings do not have tokens_out
+    model_name = req_json['model']
+    tokens_in = resp_json['usage'].get('prompt_tokens', 0)
+    tokens_out = resp_json['usage'].get('completion_tokens', 0)
     internal_api_key_id = g.internal_api_key_id
     api_response = APIResponse(model_name=model_name, 
                                tokens_in=tokens_in, 
@@ -332,23 +340,37 @@ def require_api_key(view_function):
                 raise Unauthorized('Invalid Authorization type')
         except ValueError:
             raise Unauthorized('Invalid Authorization header')
-        ik = InternalAPIKey.get_by_string(token)
+        print(InternalAPIKey.query.count()) 
+        for ik in InternalAPIKey.query.all():
+            print("key1", ik.internal_api_key_string)
+        # ik = InternalAPIKey.get_by_string(token)
+        ik = InternalAPIKey.query.filter(InternalAPIKey.internal_api_key_string==token).first()
         g.internal_api_key_id = ik.id
         if not ik.is_current():
             raise Forbidden("Your API key is not current")
         proj = ik.project
+        print("1")
         if proj.total_spent > proj.spending_limit * .98 and proj.spending_limit != 0:
             raise Forbidden("Your project is out of money")
+        print("2")
         if ik.total_spent > ik.spending_limit * .98 and ik.spending_limit != 0:
             raise Forbidden("Your API key is out of money")
-        if (model_name := request.get_json()['model']) not in ik.project.model_names():
-            raise Forbidden(f"Your API key does not have access to the model {model_name}")
+        print("3")
+        print("3a")
+        # if (model_name := request.get_json()['model']) not in ik.project.model_names():
+        #     print(request.get_json()['model'], ik.project.model_names())
+        #     raise Forbidden(f"Your API key does not have access to the model {model_name}")
         # if you have lived a good life and made it this far, we send the request to OpenAI with the real APIKey
+        print("4")
         api_key = APIKey.query.filter(APIKey.id == proj.api_key_id).first().key_string
+
+        print("test", api_key)
+        print("----")
         request.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}"
         }
+        print(request.headers)
         return view_function(*args, **kwargs)
     return decorator
 
@@ -361,14 +383,19 @@ def require_api_key(view_function):
 #     return resp.json(), 200
 
 # one endpoint to rule them all
-@app.route('/v1/chat/completions', methods=['POST'], endpoint='v1/chat/completions')
+@app.route('/v1/chat/completions', methods=['POST', 'GET'], endpoint='v1/chat/completions')
 @app.route('/v1/completions', methods=['POST'], endpoint='v1/completions')
 @app.route('/v1/embeddings', methods=['POST'], endpoint='v1/embeddings')
 @require_api_key
 def open_ai_call():
+    if request.method == 'GET':
+        return jsonify("hello")
     url = f"https://api.openai.com/{request.url_rule.endpoint}"
+    print(request.json)
     resp = requests.post(url, headers=request.headers, data=request.data)
+    print(resp.json())
     save_api_call_and_response(request, resp)
+    # return jsonify("Hep")
     return resp.json(), 200
 
 
@@ -407,8 +434,12 @@ def add_test_data():
             db.session.commit()
     return redirect(url_for('home'))
 
-@app.route('/init_db')
+@app.route('/delete_and_init_db')
 def init_db():
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+
     u = User(username="Arthur", is_admin=True)
     u.set_password("Hermes_2014")
     db.session.add(u)
@@ -445,4 +476,7 @@ def model_costs():
         {'model_name': 'ada', 'description': 'fine-tuning', 'input_cost': 0.0004, 'output_cost': 0.0016},
         {'model_name': 'text-embedding-ada-002', 'description': 'embeddings', 'input_cost': 0.0001, 'output_cost' : 0.0001}
     ]
-    return costs
+    return costs  
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000, host='0.0.0.0')  
