@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5001:8000"
+    environment:
+      - FLASK_ENV=development # Change to production when deploying
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13
+    volumes:
+      - openai_manager_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+
+volumes:
+  openai_manager_data:
