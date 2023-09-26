@@ -5,7 +5,9 @@ OpenAI Manager is a server app for keeping track of API calls. It solves a set o
 2. You can book keep all API calls made on specific projects for specific users.
 3. You can restrict how much money projects or individual users on a project can spend.
 
-OpenAI manager does this by acting as a proxy for API endpoints and providing a set of data objects that let you create Projects, Users, External API Keys and Internal API Keys that all keep track of who is making api calls for which project on which models and ultimately calculating costs per user, and per project. 
+by providing a set of data objects that let you create Projects, Users, External API Keys and Internal API Keys that all keep track of who is making api calls for which project on which models and ultimately calculating costs per user, and per project. 
+
+OpenAI manager does this by acting as a proxy for OpenAI's API endpoints. It basically accepts a POST request, pulls the Internal API Key out of the header, checks if the Internal API key is valid, whether the project associated with the Internal API Key has money left, and then puts the External API Key associated with the project back into the header, sends the POST request to OpenAI, saves the request and the response, calculates the cost per request, and finally returns the response to the user.
 
 The index page gives a good overview of how it is structured.
 
